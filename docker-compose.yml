@@ -1,0 +1,87 @@
+services:
+  db:
+    image: postgres:16
+    container_name: order-api-db
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  migrator:
+    image: migrate/migrate:4
+    container_name: order-api-migrator
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    command: ["-database", "${DATABASE_URL}",
+              "-path", "/migrations",
+              "up"]
+    volumes:
+      - ./migrations:/migrations
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  data:
+
+
+
+#version: "3.8"
+#
+#services:
+#  db:
+#    image: postgres:13.3-alpine
+#    container_name: order-api-db
+#    restart: always
+#    ports:
+#      - "5432:5432"
+#    environment:
+#      POSTGRES_USER: username
+#      POSTGRES_PASSWORD: password
+#      POSTGRES_DB: database
+#    volumes:
+#      - pgdata:/var/lib/postgresql/data
+#    healthcheck:
+#      test: ["CMD-SHELL", "pg_isready -U username -d database"]
+#      interval: 5s
+#      timeout: 5s
+#      retries: 10
+#      start_period: 15s
+#
+#  migrate:
+#    image: migrate/migrate:4
+#    container_name: order-api-migrator
+#    depends_on:
+#      db:
+#        condition: service_healthy
+#    volumes:
+#      - type: bind
+#        source: ./migrations
+#        target: /database
+#        consistency: cached
+#    command:
+#      [
+#        "-path", "/database",
+#        "-database", "postgres://username:password@order-api-db:5432/database?sslmode=disable",
+#        "up"
+#      ]
+#    restart: "no"
+#
+#volumes:
+#  pgdata:
+#
+
