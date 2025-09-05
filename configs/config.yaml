@@ -1,0 +1,11 @@
+#for logging
+env: "dev"
+log_path: ""
+
+postgres:
+  user: "new_user"
+  password: ""
+  host: "order-api-db"
+  port: "5432"
+  db_name: "db"
+  sslmode: "disable"
