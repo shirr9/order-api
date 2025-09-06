@@ -33,7 +33,7 @@ func New(ctx context.Context, cfg *config.Config) (*Storage, error) {
 	// log with safeDSN
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create connection pool: %w", err)
+		return nil, fmt.Errorf("failed to create connection Pool: %w", err)
 	}
 	if e := pool.Ping(ctx); e != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", e)
@@ -43,7 +43,7 @@ func New(ctx context.Context, cfg *config.Config) (*Storage, error) {
 }
 
 func (s *Storage) NewPostgresRepository() *PostgresRepository {
-	return &PostgresRepository{pool: s.pool, DB: s.db}
+	return &PostgresRepository{Pool: s.pool, DB: s.db}
 }
 
 func (s *Storage) Close() {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/shirr9/order-api/internal/config"
+	"github.com/shirr9/order-api/internal/logger"
 	"github.com/shirr9/order-api/internal/order"
 	"github.com/shirr9/order-api/internal/storage/postgresql"
 	"log/slog"
@@ -30,7 +31,16 @@ func SetupLogger(env string) *slog.Logger {
 	return log
 }
 
-func main() {
+func testCfg() {
+	path := "C:\\Users\\User\\GolandProjects\\order-api\\configs\\config.yaml"
+
+	cfg, err := config.Load(path)
+	if err != nil {
+		panic(fmt.Errorf("config load failed: %w", err))
+	}
+	fmt.Println(cfg)
+}
+func testFindById() {
 	//path := "C:\\Users\\User\\GolandProjects\\order-api\\configs\\config.yaml"
 	//cfg, err := config.Load(path)
 	//if err != nil {
@@ -43,14 +53,12 @@ func main() {
 
 	cfg, err := config.Load(path)
 	if err != nil {
-		// критично: без конфига дальше нельзя
 		panic(fmt.Errorf("config load failed: %w", err))
 	}
 
 	ctx := context.Background()
 	st, err := postgresql.New(ctx, cfg)
 	if err != nil {
-		// критично: Storage не создан, st == nil
 		panic(fmt.Errorf("storage init failed: %w", err))
 	}
 	defer st.Close()
@@ -124,4 +132,30 @@ func main() {
 		panic(fmt.Errorf("marshal result failed: %w", err))
 	}
 	fmt.Println(string(b))
+}
+
+func logHello() error {
+	w, err := logger.NewWriter("C:\\Users\\User\\GolandProjects\\order-api\\logs\\logs.txt")
+	if err != nil {
+		return err
+	}
+
+	log := logger.NewLogger("dev", w)
+
+	log.Info("hello")
+	return nil
+}
+
+func main() {
+	//logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	//slog.SetDefault(logger)
+	//slog.Info("message", "key1", "val1", "key2", "val2")
+	//slog.Info("message", slog.String("key1", "val1"))
+	//testCfg()
+	// test logger
+	//if err := logHello(); err != nil {
+	//	slog.Error("failed to log hello", slog.Any("err", err))
+	//	os.Exit(1)
+	//}
+
 }

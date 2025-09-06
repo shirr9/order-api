@@ -58,5 +58,18 @@ services:
         condition: service_healthy
       create_user:
         condition: service_completed_successfully
+  redis:
+    image: redis:7-alpine
+    container_name: order-api-redis
+    ports:
+      - "${REDIS_PORT}:6379"
+    env_file:
+      - .env
+    environment:
+      - REDIS_PORT=${REDIS_PORT}
+    volumes:
+      - redis:/data
+
 volumes:
   data:
+  redis:

@@ -1,12 +1,19 @@
-#for logging
+# env can be dev/local/prod
 env: "dev"
-log_path: ""
+# log_path: "" means logs just in os.Stdout
+log_path: "C:\Users\User\GolandProjects\order-api\logs\logs.txt"
 
 postgres:
   user: "new_user"
   password: ""
-#  host: "order-api-db"
+  #host: "order-api-db" for container-app
   host: "localhost"
   port: "5432"
   db_name: "db"
   sslmode: "disable"
+
+redis:
+  password: ""
+  #  host: "order-api-redis" for container-app
+  host: "localhost"
+  port: "6379"

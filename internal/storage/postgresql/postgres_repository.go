@@ -11,13 +11,13 @@ import (
 )
 
 type Repository interface {
-	AddOrder(o order.Order) error
-	FindOrderById(id string) order.Order
+	AddOrder(ctx context.Context, o order.Order) error
+	FindOrderById(ctx context.Context, id string) (*order.Order, error)
 	Close()
 }
 
 type PostgresRepository struct {
-	pool Connection
+	Pool Connection
 	DB   *bun.DB
 }
 
@@ -63,4 +63,13 @@ func (r *PostgresRepository) FindOrderById(ctx context.Context, id string) (*ord
 		return nil, err
 	}
 	return &o, nil
+}
+
+func (r *PostgresRepository) Close() {
+	if r.Pool != nil {
+		r.Pool.Close()
+	}
+	if r.DB != nil {
+		_ = r.DB.Close()
+	}
 }
