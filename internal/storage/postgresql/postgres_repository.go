@@ -1,8 +1,13 @@
 package postgresql
 
 import (
-	"fmt"
+	"context"
+	_ "fmt"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/shirr9/order-api/internal/order"
+	"github.com/uptrace/bun"
+	_ "github.com/uptrace/bun/dialect/pgdialect"
+	_ "github.com/uptrace/bun/driver/pgdriver"
 )
 
 type Repository interface {
@@ -12,29 +17,50 @@ type Repository interface {
 }
 
 type PostgresRepository struct {
-	conn Connection
+	pool Connection
+	DB   *bun.DB
 }
 
-func NewPostgresRepository(c Connection) (*PostgresRepository, error) {
-	if c == nil {
-		return nil, fmt.Errorf("connection is nil")
+func (r *PostgresRepository) AddOrder(ctx context.Context, o order.Order) error {
+	return r.DB.RunInTx(ctx, nil, func(ctx context.Context, tx bun.Tx) error {
+		if _, err := tx.NewInsert().Model(&o).Exec(ctx); err != nil {
+			return err
+		}
+		if o.Delivery != nil {
+			o.Delivery.OrderUID = o.OrderUID
+			if _, err := tx.NewInsert().Model(o.Delivery).Exec(ctx); err != nil {
+				return err
+			}
+		}
+		if o.Payment != nil {
+			o.Payment.OrderUID = o.OrderUID
+			if _, err := tx.NewInsert().Model(o.Payment).Exec(ctx); err != nil {
+				return err
+			}
+		}
+		if len(o.Items) > 0 {
+			for i := range o.Items {
+				o.Items[i].OrderUID = o.OrderUID
+			}
+			if _, err := tx.NewInsert().Model(&o.Items).Exec(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (r *PostgresRepository) FindOrderById(ctx context.Context, id string) (*order.Order, error) {
+	var o order.Order
+	if err := r.DB.
+		NewSelect().
+		Model(&o).
+		Relation("Delivery").
+		Relation("Payment").
+		Relation("Items").
+		Where("o.order_uid = ?", id).
+		Scan(ctx); err != nil {
+		return nil, err
 	}
-	return &PostgresRepository{conn: c}, nil
-}
-
-func (r *PostgresRepository) Close() {
-	if r.conn != nil {
-		r.conn.Close()
-		// log
-	}
-}
-
-func (r *PostgresRepository) AddOrder(o order.Order) error {
-	q := `WITH 
-`
-}
-
-func (r *PostgresRepository) FindOrderById(id string) order.Order {
-	//TODO implement me
-	panic("implement me")
+	return &o, nil
 }

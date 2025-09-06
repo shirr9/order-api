@@ -6,7 +6,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/shirr9/order-api/internal/config"
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
 )
 
 type Connection interface {
@@ -16,12 +19,12 @@ type Connection interface {
 	Close()
 }
 
-// mb will add
-//type Storage struct {
-//	pool *pgxpool.Pool
-//}
+type Storage struct {
+	pool *pgxpool.Pool
+	db   *bun.DB
+}
 
-func NewConnection(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
+func New(ctx context.Context, cfg *config.Config) (*Storage, error) {
 	// dbdriver://username:password@host:port/dbname?param1=true&param2=false
 	dsn := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=%s",
 		cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.DbName, cfg.SSlMode)
@@ -36,5 +39,18 @@ func NewConnection(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, erro
 		return nil, fmt.Errorf("failed to ping database: %w", e)
 	}
 	// log: successfully connected to database
-	return pool, nil
+	return &Storage{pool: pool, db: bun.NewDB(stdlib.OpenDBFromPool(pool), pgdialect.New())}, nil
+}
+
+func (s *Storage) NewPostgresRepository() *PostgresRepository {
+	return &PostgresRepository{pool: s.pool, DB: s.db}
+}
+
+func (s *Storage) Close() {
+	if s.pool != nil {
+		s.pool.Close()
+	}
+	if s.db != nil {
+		_ = s.db.Close()
+	}
 }
