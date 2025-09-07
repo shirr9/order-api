@@ -49,7 +49,13 @@ func (s *Service) FindOrderById(ctx context.Context, id string) (*order.Order, e
 		s.log.LogAttrs(ctx, slog.LevelInfo, "order found in database", slog.String("order_uid", id))
 
 		// add to cache
-		err = s.cache.Set(ctx, id, data)
+		jData, err := json.Marshal(o)
+		if err != nil {
+			s.log.LogAttrs(ctx, slog.LevelError, "failed to marshal data to JSON", slog.String("order_uid", id),
+				slog.Any("err", err))
+			return nil, err
+		}
+		err = s.cache.Set(ctx, id, jData)
 		if err != nil {
 			s.log.LogAttrs(ctx, slog.LevelError, "saving in cache failed", slog.String("order_uid", id),
 				slog.Any("err", err))
