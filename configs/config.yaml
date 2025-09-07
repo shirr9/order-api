@@ -17,7 +17,5 @@ redis:
   #  host: "order-api-cache" for container-app
   host: "localhost"
   port: "6379"
-  # int max_size, default max_size = 20
-  max_size: 10
   # ttl(time to live) - count of time.Second - int, default ttl = 300
   ttl: 600

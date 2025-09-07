@@ -16,9 +16,8 @@ type CacheRepository interface {
 }
 
 type Redis struct {
-	Client  *redis.Client
-	MaxSize int
-	TTL     int
+	Client *redis.Client
+	TTL    int
 }
 
 func NewRedis(ctx context.Context, cfg *config.Config) (*Redis, error) {
@@ -33,20 +32,12 @@ func NewRedis(ctx context.Context, cfg *config.Config) (*Redis, error) {
 	if _, err := rdb.Ping(ctx).Result(); err != nil {
 		return nil, err
 	}
-	return &Redis{Client: rdb, MaxSize: cfg.MaxSize, TTL: cfg.TTL}, nil
+	return &Redis{Client: rdb, TTL: cfg.TTL}, nil
 }
 
 func (r Redis) Set(ctx context.Context, key string, value []byte) error {
 	var duration time.Duration = time.Duration(r.TTL) * time.Second
-	err := r.Client.Set(ctx, key, value, duration).Err()
-	if err != nil {
-		return err
-	}
-	_, err = r.Client.LTrim(ctx, key, 0, int64(r.MaxSize-1)).Result()
-	if err != nil {
-		return err
-	}
-	return nil
+	return r.Client.Set(ctx, key, value, duration).Err()
 }
 
 func (r Redis) Get(ctx context.Context, key string) ([]byte, error) {
