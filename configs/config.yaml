@@ -1,7 +1,7 @@
 # env can be dev/local/prod
 env: "dev"
 # log_path: "" means logs just in os.Stdout
-log_path: "C:\Users\User\GolandProjects\order-api\logs\logs.txt"
+log_path: "C:\\Users\\User\\GolandProjects\\order-api\\logs\\logs.txt"
 
 postgres:
   user: "new_user"
@@ -17,3 +17,5 @@ redis:
   #  host: "order-api-redis" for container-app
   host: "localhost"
   port: "6379"
+  # int max_size
+  max_size: 10
