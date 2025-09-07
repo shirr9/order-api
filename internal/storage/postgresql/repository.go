@@ -2,12 +2,8 @@ package postgresql
 
 import (
 	"context"
-	_ "fmt"
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/shirr9/order-api/internal/order"
 	"github.com/uptrace/bun"
-	_ "github.com/uptrace/bun/dialect/pgdialect"
-	_ "github.com/uptrace/bun/driver/pgdriver"
 )
 
 type Repository interface {
