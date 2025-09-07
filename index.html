@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order API</title>
+    <style>
+        body { font-family: sans-serif; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input, textarea { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { padding: 10px 15px; }
+        #result { margin-top: 20px; white-space: pre-wrap; background: #f4f4f4; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Order API</h1>
+
+        <h2>Create Order</h2>
+        <form id="createOrderForm">
+            <div class="form-group">
+                <label for="orderData">Order JSON Data:</label>
+                <textarea id="orderData" rows="15">{
+    "order_uid": "test-order-123",
+    "track_number": "TRACK123",
+    "entry": "WBIL",
+    "delivery": {
+        "name": "Test Testov",
+        "phone": "+9720000000",
+        "zip": "2639809",
+        "city": "Kiryat Mozkin",
+        "address": "Ploshad Mira 15",
+        "region": "Kraiot",
+        "email": "test@gmail.com"
+    },
+    "payment": {
+        "transaction": "b563feb7b2b84b6test",
+        "request_id": "",
+        "currency": "USD",
+        "provider": "wbpay",
+        "amount": 1817,
+        "payment_dt": 1637907727,
+        "bank": "alpha",
+        "delivery_cost": 1500,
+        "goods_total": 317,
+        "custom_fee": 0
+    },
+    "items": [
+        {
+            "chrt_id": 9934930,
+            "track_number": "TRACK123",
+            "price": 453,
+            "rid": "ab4219087a764ae0btest",
+            "name": "Mascaras",
+            "sale": 30,
+            "size": "0",
+            "total_price": 317,
+            "nm_id": 2389232,
+            "brand": "Vivienne Sabo",
+            "status": 202
+        }
+    ],
+    "locale": "en",
+    "internal_signature": "",
+    "customer_id": "test",
+    "delivery_service": "meest",
+    "shardkey": "9",
+    "sm_id": 99,
+    "date_created": "2021-11-26T06:22:19Z",
+    "oof_shard": "1"
+}</textarea>
+            </div>
+            <button type="submit">Create Order</button>
+        </form>
+        <div id="createResult"></div>
+
+        <hr>
+
+        <h2>Get Order by ID</h2>
+        <form id="getOrderForm">
+            <div class="form-group">
+                <label for="orderId">Order ID:</label>
+                <input type="text" id="orderId" required>
+            </div>
+            <button type="submit">Get Order</button>
+        </form>
+        <pre id="result"></pre>
+    </div>
+
+    <script>
+        document.getElementById('createOrderForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const orderData = document.getElementById('orderData').value;
+            const createResult = document.getElementById('createResult');
+
+            try {
+                const response = await fetch('http://localhost:8080/order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: orderData
+                });
+                const result = await response.json();
+                createResult.textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                createResult.textContent = 'Error: ' + error.message;
+            }
+        });
+
+        document.getElementById('getOrderForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const orderId = document.getElementById('orderId').value;
+            const resultDiv = document.getElementById('result');
+
+            try {
+                const response = await fetch(`http://localhost:8080/order/${orderId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    resultDiv.textContent = `Error: ${response.status} ${response.statusText}`;
+                }
+            } catch (error) {
+                resultDiv.textContent = 'Error: ' + error.message;
+            }
+        });
+    </script>
+</body>
+</html>

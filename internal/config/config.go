@@ -1,10 +1,11 @@
 package config
 
 type Config struct {
-	Env        string `yaml:"env"`
-	LogPath    string `yaml:"log_path"`
-	PostgresDb `yaml:"postgres"`
-	RedisDB    `yaml:"redis"`
+	Env         string `yaml:"env"`
+	LogPath     string `yaml:"log_path"`
+	PostgresDb  `yaml:"postgres"`
+	RedisDB     `yaml:"redis"`
+	KafkaConfig `yaml:"kafka"`
 }
 
 // PostgresDb password must have correct name from .env, it must be connected with config.yaml
@@ -22,4 +23,9 @@ type RedisDB struct {
 	Host     string `yaml:"host" env-default:"localhost"`
 	Port     string `yaml:"port" env:"REDIS_PORT" env-required:"true"`
 	TTL      int    `yaml:"ttl" env-default:"300"`
+}
+
+type KafkaConfig struct {
+	Brokers []string `yaml:"brokers" env:"KAFKA_BROKERS" env-separator:","`
+	Topic   string   `yaml:"topic" env:"KAFKA_TOPIC"`
 }

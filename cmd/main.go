@@ -2,160 +2,118 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/shirr9/order-api/internal/config"
-	"github.com/shirr9/order-api/internal/logger"
-	"github.com/shirr9/order-api/internal/order"
-	"github.com/shirr9/order-api/internal/storage/postgresql"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
+	"github.com/shirr9/order-api/internal/config"
+	"github.com/shirr9/order-api/internal/handlers"
+	"github.com/shirr9/order-api/internal/kafka"
+	"github.com/shirr9/order-api/internal/logger"
+	"github.com/shirr9/order-api/internal/service"
+	"github.com/shirr9/order-api/internal/storage/cache"
+	"github.com/shirr9/order-api/internal/storage/postgresql"
 )
 
-func main2() {
-	rt := chi.NewRouter()
-	rt.Get("/order/{id}", func(w http.ResponseWriter, r *http.Request) {
-		id := chi.URLParam(r, "id")
-		w.Write([]byte("hello " + id))
-	})
-	http.ListenAndServe("localhost:8080", rt)
-}
-
-// SetupLogger sets up slog "dev" logger
-func SetupLogger(env string) *slog.Logger {
-	var log *slog.Logger
-	log = slog.New(
-		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	return log
-}
-
-func testCfg() {
-	path := "C:\\Users\\User\\GolandProjects\\order-api\\configs\\config.yaml"
-
-	cfg, err := config.Load(path)
-	if err != nil {
-		panic(fmt.Errorf("config load failed: %w", err))
-	}
-	fmt.Println(cfg)
-}
-func testFindById() {
-	//path := "C:\\Users\\User\\GolandProjects\\order-api\\configs\\config.yaml"
-	//cfg, err := config.Load(path)
-	//if err != nil {
-	//	fmt.Println(err)
-	//}
-	////ctx := context.Background()
-	////st, _ := postgresql.New(ctx, cfg)
-	////repo := st.NewPostgresRepository()
-	path := "C:\\Users\\User\\GolandProjects\\order-api\\configs\\config.yaml"
-
-	cfg, err := config.Load(path)
-	if err != nil {
-		panic(fmt.Errorf("config load failed: %w", err))
-	}
-
-	ctx := context.Background()
-	st, err := postgresql.New(ctx, cfg)
-	if err != nil {
-		panic(fmt.Errorf("storage init failed: %w", err))
-	}
-	defer st.Close()
-
-	repo := st.NewPostgresRepository()
-	data := []byte(`{
-   "order_uid": "b563feb7b2b84b6test",
-   "track_number": "WBILMTESTTRACK",
-   "entry": "WBIL",
-   "delivery": {
-      "name": "Test Testov",
-      "phone": "+9720000000",
-      "zip": "2639809",
-      "city": "Kiryat Mozkin",
-      "address": "Ploshad Mira 15",
-      "region": "Kraiot",
-      "email": "test@gmail.com"
-   },
-   "payment": {
-      "transaction": "b563feb7b2b84b6test",
-      "request_id": "",
-      "currency": "USD",
-      "provider": "wbpay",
-      "amount": 1817,
-      "payment_dt": 1637907727,
-      "bank": "alpha",
-      "delivery_cost": 1500,
-      "goods_total": 317,
-      "custom_fee": 0
-   },
-   "items": [
-      {
-         "chrt_id": 9934930,
-         "track_number": "WBILMTESTTRACK",
-         "price": 453,
-         "rid": "ab4219087a764ae0btest",
-         "name": "Mascaras",
-         "sale": 30,
-         "size": "0",
-         "total_price": 317,
-         "nm_id": 2389212,
-         "brand": "Vivienne Sabo",
-         "status": 202
-      }
-   ],
-   "locale": "en",
-   "internal_signature": "",
-   "customer_id": "test",
-   "delivery_service": "meest",
-   "shardkey": "9",
-   "sm_id": 99,
-   "date_created": "2021-11-26T06:22:19Z",
-   "oof_shard": "1"
-}`)
-	var o order.Order
-	if err := json.Unmarshal(data, &o); err != nil {
-		panic(fmt.Errorf("unmarshal failed: %w", err))
-	}
-	//// тест добавления - все норм
-	//if err := repo.AddOrder(ctx, o); err != nil {
-	//	panic(fmt.Errorf("AddOrder failed: %w", err))
-	//}
-
-	// тест поиска
-	got, err := repo.FindOrderById(ctx, o.OrderUID)
-	if err != nil {
-		panic(fmt.Errorf("FindOrderById failed: %w", err))
-	}
-	b, err := json.MarshalIndent(got, "", "  ")
-	if err != nil {
-		panic(fmt.Errorf("marshal result failed: %w", err))
-	}
-	fmt.Println(string(b))
-}
-
-func logHello() error {
-	w, err := logger.NewWriter("C:\\Users\\User\\GolandProjects\\order-api\\logs\\logs.txt")
-	if err != nil {
-		return err
-	}
-
-	log := logger.NewLogger("dev", w)
-
-	log.Info("hello")
-	return nil
-}
-
 func main() {
-	//logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	//slog.SetDefault(logger)
-	//slog.Info("message", "key1", "val1", "key2", "val2")
-	//slog.Info("message", slog.String("key1", "val1"))
-	//testCfg()
-	// test logger
-	//if err := logHello(); err != nil {
-	//	slog.Error("failed to log hello", slog.Any("err", err))
-	//	os.Exit(1)
-	//}
+	CfgPath := "configs/config.yaml"
+	cfg, err := config.Load(CfgPath)
+	if err != nil {
+		slog.Error("failed to load config", slog.Any("err", err))
+		os.Exit(1)
+	}
 
+	logWriter, err := logger.NewWriter(cfg.LogPath)
+	if err != nil {
+		slog.Error("failed to init log writer", slog.Any("err", err))
+		os.Exit(1)
+	}
+	log := logger.NewLogger(cfg.Env, logWriter)
+	log.Info("logger initialized")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	storage, err := postgresql.New(ctx, cfg)
+	if err != nil {
+		log.Error("failed to init storage", slog.Any("err", err))
+		os.Exit(1)
+	}
+	defer storage.Close()
+	log.Info("database connected")
+	repo := storage.NewPostgresRepository()
+
+	cacheStorage, err := cache.NewRedis(ctx, cfg)
+	if err != nil {
+		log.Error("failed to init cache", slog.Any("err", err))
+		os.Exit(1)
+	}
+	defer cacheStorage.Close()
+	log.Info("cache connected")
+
+	orderService := service.NewService(repo, log, cacheStorage)
+	kafkaConsumer := kafka.NewConsumer(cfg.KafkaConfig, log, orderService)
+	go func() {
+		kafkaConsumer.Run(ctx)
+	}()
+
+	router := chi.NewRouter()
+	router.Use(cors.New(cors.Options{
+		AllowedOrigins:   []string{"https://*", "http://*", "file://", "null"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+	}).Handler)
+
+	router.Get("/order/{id}", handlers.NewIdHandler(log, orderService))
+
+	router.Post("/order", handlers.NewAddHandler(log, orderService))
+
+	router.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	srv := &http.Server{
+		Addr:         ":8080",
+		Handler:      router,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  1 * time.Minute,
+	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error("failed to start http server", slog.Any("error", err))
+			os.Exit(1)
+		}
+	}()
+
+	log.Info("application started", slog.String("env", cfg.Env))
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-stop
+
+	log.Info("stopping application", slog.String("signal", sig.String()))
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Error("http server shutdown failed", slog.Any("error", err))
+	}
+	cancel()
+
+	if err := kafkaConsumer.Close(); err != nil {
+		log.Error("failed to close kafka consumer", slog.Any("err", err))
+	}
+
+	log.Info("application stopped")
 }
