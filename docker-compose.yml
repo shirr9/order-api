@@ -58,6 +58,8 @@ services:
         condition: service_healthy
       create_user:
         condition: service_completed_successfully
+
+
   redis:
     image: redis:7-alpine
     container_name: order-api-redis
@@ -67,8 +69,15 @@ services:
       - .env
     environment:
       - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     volumes:
       - redis:/data
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 volumes:
   data:
