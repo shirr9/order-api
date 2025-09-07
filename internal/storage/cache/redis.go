@@ -1,4 +1,4 @@
-package redis
+package cache
 
 import (
 	"context"
@@ -9,14 +9,16 @@ import (
 )
 
 type CacheRepository interface {
-	Set(ctx context.Context, key string, value []byte, ttl time.Duration) error
+	Set(ctx context.Context, key string, value []byte) error
 	Get(ctx context.Context, key string) ([]byte, error)
 	Delete(ctx context.Context, key string) error
 	Close() error
 }
 
 type Redis struct {
-	client *redis.Client
+	Client  *redis.Client
+	MaxSize int
+	TTL     int
 }
 
 func NewRedis(ctx context.Context, cfg *config.Config) (*Redis, error) {
@@ -25,21 +27,30 @@ func NewRedis(ctx context.Context, cfg *config.Config) (*Redis, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     adr,
 		Password: cfg.RedisDB.Password,
-		DB:       0,
+		DB:       0, //default
 	})
 
 	if _, err := rdb.Ping(ctx).Result(); err != nil {
 		return nil, err
 	}
-	return &Redis{client: rdb}, nil
+	return &Redis{Client: rdb, MaxSize: cfg.MaxSize, TTL: cfg.TTL}, nil
 }
 
-func (r Redis) Set(ctx context.Context, key string, value []byte, ttl time.Duration) error {
-	return r.client.Set(ctx, key, value, ttl).Err()
+func (r Redis) Set(ctx context.Context, key string, value []byte) error {
+	var duration time.Duration = time.Duration(r.TTL) * time.Second
+	err := r.Client.Set(ctx, key, value, duration).Err()
+	if err != nil {
+		return err
+	}
+	_, err = r.Client.LTrim(ctx, key, 0, int64(r.MaxSize-1)).Result()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r Redis) Get(ctx context.Context, key string) ([]byte, error) {
-	data, err := r.client.Get(ctx, key).Bytes()
+	data, err := r.Client.Get(ctx, key).Bytes()
 	if err != nil {
 		return nil, err
 	}
@@ -47,9 +58,9 @@ func (r Redis) Get(ctx context.Context, key string) ([]byte, error) {
 }
 
 func (r Redis) Delete(ctx context.Context, key string) error {
-	return r.client.Del(ctx, key).Err()
+	return r.Client.Del(ctx, key).Err()
 }
 
 func (r Redis) Close() error {
-	return r.client.Close()
+	return r.Client.Close()
 }

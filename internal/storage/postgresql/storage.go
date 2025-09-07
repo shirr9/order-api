@@ -27,10 +27,8 @@ type Storage struct {
 func New(ctx context.Context, cfg *config.Config) (*Storage, error) {
 	// dbdriver://username:password@host:port/dbname?param1=true&param2=false
 	dsn := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=%s",
-		cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.DbName, cfg.SSlMode)
-	//safeDSN := fmt.Sprintf("postgresql://%s:***@%s:%s/%s?sslmode=%s",
-	//	cfg.Username, cfg.Host, cfg.Port, cfg.DbName, cfg.SSlMode)
-	// log with safeDSN
+		cfg.PostgresDb.Username, cfg.PostgresDb.Password, cfg.PostgresDb.Host,
+		cfg.PostgresDb.Port, cfg.PostgresDb.DbName, cfg.PostgresDb.SSlMode)
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connection Pool: %w", err)
@@ -38,7 +36,6 @@ func New(ctx context.Context, cfg *config.Config) (*Storage, error) {
 	if e := pool.Ping(ctx); e != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", e)
 	}
-	// log: successfully connected to database
 	return &Storage{pool: pool, db: bun.NewDB(stdlib.OpenDBFromPool(pool), pgdialect.New())}, nil
 }
 
