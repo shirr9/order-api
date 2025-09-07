@@ -22,4 +22,5 @@ type RedisDB struct {
 	Host     string `yaml:"host" env-default:"localhost"`
 	Port     string `yaml:"port" env:"REDIS_PORT" env-required:"true"`
 	MaxSize  int    `yaml:"max_size" env-default:"20"`
+	TTL      int    `yaml:"ttl" env-default:"300"`
 }
